@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/rwa-and-valuation.json",
+  "title": "PetProData — RWA, Valuation & Cost Tracking",
+  "description": "Real World Asset classification, lifetime cost tracking, insurance, breeding value, and financial provenance for companion animals. This is what makes PetProData more than a medical record — it's a full asset ledger. Every dollar spent, every policy held, every value event is tracked here.",
+  "type": "object",
+  "required": ["animalDID", "assetClassification"],
+  "properties": {
+
+    "animalDID": {
+      "type": "string",
+      "privacyClass": "public"
+    },
+
+    "assetClassification": {
+      "type": "object",
+      "description": "How this animal is classified as a real-world asset. Affects legal standing, tax treatment, and insurance.",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Primary asset classification.",
+          "enum": [
+            "companion_pet",
+            "show_animal",
+            "breeding_animal",
+            "service_animal",
+            "therapy_animal",
+            "working_animal",
+            "emotional_support_animal",
+            "rescue_foster",
+            "sanctuary_resident"
+          ],
+          "privacyClass": "shielded"
+        },
+        "registeredBreed": { "type": "boolean", "description": "Is this a registered purebred with papers?", "privacyClass": "public" },
+        "breedingStatus": {
+          "type": "string",
+          "enum": ["not_applicable", "intact_not_breeding", "active_breeding", "retired_breeding", "altered"],
+          "privacyClass": "shielded"
+        },
+        "competitionStatus": {
+          "type": "string",
+          "enum": ["not_applicable", "active_competitor", "retired_competitor", "champion_titled"],
+          "privacyClass": "shielded"
+        },
+        "serviceAnimalCertification": {
+          "type": "object",
+          "description": "Service animal training and certification details.",
+          "properties": {
+            "tasksTrained": { "type": "array", "items": { "type": "string" }, "examples": [["mobility assistance", "seizure alert", "diabetic alert", "PTSD support"]], "privacyClass": "shielded" },
+            "trainingOrganization": { "type": "string", "privacyClass": "shielded" },
+            "certificationDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "certificationHash": { "type": "string", "description": "Hash of certification document.", "privacyClass": "public" }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "valuation": {
+      "type": "object",
+      "description": "Current and historical valuation of the animal. Relevant for insurance, estates, divorce, breeding, and show purposes.",
+      "properties": {
+        "acquisitionCost": {
+          "type": "number",
+          "description": "Original purchase price or adoption fee.",
+          "privacyClass": "restricted"
+        },
+        "currentEstimatedValue": {
+          "type": "number",
+          "description": "Current fair market value estimate. Updated periodically or at valuation events.",
+          "privacyClass": "restricted"
+        },
+        "valuationDate": { "type": "string", "format": "date", "privacyClass": "restricted" },
+        "valuationMethod": {
+          "type": "string",
+          "enum": ["purchase_price", "replacement_cost", "professional_appraisal", "breeding_value", "show_record_value", "service_training_value", "sentimental_declared"],
+          "privacyClass": "restricted"
+        },
+        "valuationHistory": {
+          "type": "array",
+          "description": "Historical valuation events for provenance and audit.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "format": "date", "privacyClass": "restricted" },
+              "value": { "type": "number", "privacyClass": "restricted" },
+              "method": { "type": "string", "privacyClass": "restricted" },
+              "appraiserDID": { "type": "string", "description": "DID of person or entity who appraised.", "privacyClass": "restricted" },
+              "reason": { "type": "string", "examples": ["Insurance renewal", "Estate planning", "Sale listing", "Breeding contract"], "privacyClass": "restricted" }
+            }
+          },
+          "privacyClass": "restricted"
+        },
+        "breedingValue": {
+          "type": "object",
+          "description": "Breeding-specific valuation for intact animals with breeding rights.",
+          "properties": {
+            "studFee": { "type": "number", "description": "Fee charged per breeding (males).", "privacyClass": "restricted" },
+            "litterValue": { "type": "number", "description": "Average value of a litter produced (females).", "privacyClass": "restricted" },
+            "littersProduced": { "type": "integer", "privacyClass": "shielded" },
+            "offspringRegistered": { "type": "integer", "privacyClass": "shielded" },
+            "titledOffspring": { "type": "integer", "description": "Number of offspring with conformation or performance titles.", "privacyClass": "shielded" }
+          },
+          "privacyClass": "restricted"
+        }
+      },
+      "privacyClass": "restricted"
+    },
+
+    "lifetimeCostTracker": {
+      "type": "object",
+      "description": "Cumulative cost tracking across all categories. Builds automatically from clinical record billing data. Invaluable for insurance disputes, tax records, estate planning, and personal budgeting.",
+      "properties": {
+        "currency": { "type": "string", "default": "USD", "privacyClass": "restricted" },
+        "totalLifetimeCost": { "type": "number", "description": "Sum of all tracked costs.", "privacyClass": "restricted" },
+        "costByCategory": {
+          "type": "object",
+          "description": "Costs broken down by category.",
+          "properties": {
+            "acquisition": { "type": "number", "description": "Purchase/adoption fees.", "privacyClass": "restricted" },
+            "veterinaryRoutine": { "type": "number", "description": "Wellness exams, vaccines, preventive care.", "privacyClass": "restricted" },
+            "veterinaryIllness": { "type": "number", "description": "Sick visits, diagnostics, treatments.", "privacyClass": "restricted" },
+            "veterinaryEmergency": { "type": "number", "description": "ER visits and critical care.", "privacyClass": "restricted" },
+            "surgery": { "type": "number", "privacyClass": "restricted" },
+            "dental": { "type": "number", "privacyClass": "restricted" },
+            "medications": { "type": "number", "description": "Ongoing prescriptions and one-time meds.", "privacyClass": "restricted" },
+            "diagnostics": { "type": "number", "description": "Lab work, imaging, biopsies.", "privacyClass": "restricted" },
+            "food": { "type": "number", "privacyClass": "restricted" },
+            "supplements": { "type": "number", "privacyClass": "restricted" },
+            "grooming": { "type": "number", "privacyClass": "restricted" },
+            "boarding": { "type": "number", "privacyClass": "restricted" },
+            "training": { "type": "number", "privacyClass": "restricted" },
+            "insurance_premiums": { "type": "number", "privacyClass": "restricted" },
+            "supplies": { "type": "number", "description": "Beds, crates, toys, leashes, etc.", "privacyClass": "restricted" },
+            "registration_licensing": { "type": "number", "privacyClass": "restricted" },
+            "breeding_costs": { "type": "number", "description": "Stud fees, whelping supplies, genetic testing.", "privacyClass": "restricted" },
+            "travel": { "type": "number", "description": "Transport, carriers, health certificates.", "privacyClass": "restricted" },
+            "other": { "type": "number", "privacyClass": "restricted" }
+          },
+          "privacyClass": "restricted"
+        },
+        "costByYear": {
+          "type": "array",
+          "description": "Annual cost breakdown for trend analysis.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "year": { "type": "integer", "privacyClass": "restricted" },
+              "totalCost": { "type": "number", "privacyClass": "restricted" }
+            }
+          },
+          "privacyClass": "restricted"
+        },
+        "lastUpdated": { "type": "string", "format": "date-time", "privacyClass": "restricted" }
+      },
+      "privacyClass": "restricted"
+    },
+
+    "insurance": {
+      "type": "object",
+      "description": "Pet insurance policy details and claims history.",
+      "properties": {
+        "currentPolicy": {
+          "type": "object",
+          "properties": {
+            "insurerName": { "type": "string", "examples": ["Trupanion", "Nationwide", "Healthy Paws", "Petplan", "Embrace", "Lemonade", "Figo"], "privacyClass": "shielded" },
+            "insurerDID": { "type": "string", "privacyClass": "shielded" },
+            "policyNumber": { "type": "string", "privacyClass": "restricted" },
+            "policyType": { "type": "string", "enum": ["accident_only", "accident_illness", "comprehensive", "wellness_addon"], "privacyClass": "shielded" },
+            "effectiveDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "renewalDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "monthlyPremium": { "type": "number", "privacyClass": "restricted" },
+            "annualDeductible": { "type": "number", "privacyClass": "restricted" },
+            "reimbursementPercentage": { "type": "integer", "description": "70, 80, or 90 percent typically.", "privacyClass": "shielded" },
+            "annualMaxPayout": { "type": "number", "description": "Annual or lifetime max. -1 for unlimited.", "privacyClass": "restricted" },
+            "preExistingExclusions": {
+              "type": "array",
+              "description": "Conditions excluded as pre-existing.",
+              "items": { "type": "string" },
+              "privacyClass": "restricted"
+            },
+            "policyDocumentHash": { "type": "string", "description": "Hash of policy document for integrity.", "privacyClass": "public" }
+          },
+          "privacyClass": "shielded"
+        },
+        "claimsHistory": {
+          "type": "array",
+          "description": "All insurance claims filed for this animal.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claimId": { "type": "string", "privacyClass": "restricted" },
+              "claimDate": { "type": "string", "format": "date", "privacyClass": "restricted" },
+              "condition": { "type": "string", "privacyClass": "restricted" },
+              "amountClaimed": { "type": "number", "privacyClass": "restricted" },
+              "amountReimbursed": { "type": "number", "privacyClass": "restricted" },
+              "status": { "type": "string", "enum": ["submitted", "under_review", "approved", "partially_approved", "denied", "appealed"], "privacyClass": "restricted" },
+              "denialReason": { "type": "string", "privacyClass": "restricted" },
+              "invoiceHash": { "type": "string", "description": "Links to clinical record invoice hash for verification.", "privacyClass": "public" }
+            }
+          },
+          "privacyClass": "restricted"
+        },
+        "priorPolicies": {
+          "type": "array",
+          "description": "Previous insurance policies for continuity-of-coverage proofs.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "insurerName": { "type": "string", "privacyClass": "shielded" },
+              "policyNumber": { "type": "string", "privacyClass": "restricted" },
+              "coverageDates": { "type": "string", "description": "Start to end date range.", "privacyClass": "shielded" },
+              "cancellationReason": { "type": "string", "enum": ["switched_provider", "cost", "coverage_dispute", "pet_deceased", "other"], "privacyClass": "restricted" }
+            }
+          },
+          "privacyClass": "restricted"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "revenueGenerated": {
+      "type": "object",
+      "description": "Income this animal has generated. Relevant for breeding animals, show animals, service programs, and research participation.",
+      "properties": {
+        "breedingIncome": { "type": "number", "description": "Total stud fees or puppy/kitten sale proceeds.", "privacyClass": "restricted" },
+        "showPrizeMoney": { "type": "number", "privacyClass": "restricted" },
+        "researchCompensation": { "type": "number", "description": "Micropayments from research marketplace participation.", "privacyClass": "restricted" },
+        "mediaSponsorships": { "type": "number", "description": "Income from social media, advertising, or media appearances.", "privacyClass": "restricted" },
+        "otherIncome": { "type": "number", "privacyClass": "restricted" },
+        "totalRevenueGenerated": { "type": "number", "privacyClass": "restricted" }
+      },
+      "privacyClass": "restricted"
+    }
+  }
+}

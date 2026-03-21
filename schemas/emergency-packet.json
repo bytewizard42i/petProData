@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/emergency-packet.json",
+  "title": "PetProData — Emergency Packet",
+  "description": "Pre-authorized emergency disclosure data. When a pet is found injured, missing, or arrives at an ER with no context, this packet becomes accessible via QR collar tag, chip-linked gateway, or credential scan. Only fields here are revealed — everything else stays locked. Governed by a Midnight Emergency Reveal Policy contract.",
+  "type": "object",
+  "required": ["animalDID", "emergencyRevealPolicy", "criticalMedical", "emergencyContacts"],
+  "properties": {
+
+    "animalDID": { "type": "string", "privacyClass": "public" },
+
+    "emergencyRevealPolicy": {
+      "type": "object",
+      "description": "On-chain policy governing when and how the emergency packet is revealed.",
+      "properties": {
+        "policyContractAddress": { "type": "string", "description": "Midnight contract address.", "privacyClass": "public" },
+        "revealTriggers": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["emergency_clinic_scan", "animal_control_scan", "shelter_intake_scan", "owner_manual_unlock", "authorized_contact_unlock", "law_enforcement_request"] },
+          "privacyClass": "public"
+        },
+        "revealDurationHours": { "type": "integer", "default": 24, "description": "How long the packet stays accessible after trigger.", "privacyClass": "public" },
+        "auditRequired": { "type": "boolean", "default": true, "privacyClass": "public" }
+      },
+      "privacyClass": "public"
+    },
+
+    "quickIdentification": {
+      "type": "object",
+      "description": "Minimum info to identify this animal at a glance.",
+      "properties": {
+        "species": { "type": "string", "privacyClass": "emergency" },
+        "breed": { "type": "string", "privacyClass": "emergency" },
+        "callName": { "type": "string", "privacyClass": "emergency" },
+        "color": { "type": "string", "privacyClass": "emergency" },
+        "sex": { "type": "string", "privacyClass": "emergency" },
+        "approximateAge": { "type": "string", "privacyClass": "emergency" },
+        "weightKg": { "type": "number", "privacyClass": "emergency" },
+        "microchipNumber": { "type": "string", "privacyClass": "emergency" },
+        "photoUri": { "type": "string", "privacyClass": "emergency" }
+      },
+      "privacyClass": "emergency"
+    },
+
+    "criticalMedical": {
+      "type": "object",
+      "description": "Life-or-death medical information an emergency vet needs immediately.",
+      "properties": {
+        "knownAllergies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "allergen": { "type": "string", "examples": ["Acepromazine", "Penicillin", "Rabies vaccine (anaphylaxis hx)"], "privacyClass": "emergency" },
+              "severity": { "type": "string", "enum": ["mild", "moderate", "severe", "anaphylaxis"], "privacyClass": "emergency" },
+              "reaction": { "type": "string", "privacyClass": "emergency" }
+            }
+          },
+          "privacyClass": "emergency"
+        },
+        "currentMedications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "drugName": { "type": "string", "privacyClass": "emergency" },
+              "dose": { "type": "string", "privacyClass": "emergency" },
+              "frequency": { "type": "string", "privacyClass": "emergency" },
+              "reason": { "type": "string", "privacyClass": "emergency" }
+            }
+          },
+          "privacyClass": "emergency"
+        },
+        "chronicConditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "condition": { "type": "string", "examples": ["Diabetes mellitus (insulin-dependent)", "Epilepsy", "Addison's disease", "HCM", "CKD stage III"], "privacyClass": "emergency" },
+              "severity": { "type": "string", "privacyClass": "emergency" },
+              "managedBy": { "type": "string", "privacyClass": "emergency" }
+            }
+          },
+          "privacyClass": "emergency"
+        },
+        "sedationContraindications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "drug": { "type": "string", "examples": ["Acepromazine (MDR1 mutation)", "Xylazine", "Ketamine (cardiac risk)"], "privacyClass": "emergency" },
+              "reason": { "type": "string", "privacyClass": "emergency" }
+            }
+          },
+          "privacyClass": "emergency"
+        },
+        "heartCondition": { "type": "boolean", "privacyClass": "emergency" },
+        "seizureHistory": { "type": "boolean", "privacyClass": "emergency" },
+        "diabetic": { "type": "boolean", "privacyClass": "emergency" },
+        "insulinDependent": { "type": "boolean", "privacyClass": "emergency" },
+        "bleedingDisorder": { "type": "boolean", "privacyClass": "emergency" },
+        "recentSurgery": {
+          "type": "object",
+          "properties": {
+            "procedure": { "type": "string", "privacyClass": "emergency" },
+            "date": { "type": "string", "format": "date", "privacyClass": "emergency" },
+            "restrictions": { "type": "string", "privacyClass": "emergency" }
+          },
+          "privacyClass": "emergency"
+        },
+        "implants": {
+          "type": "array",
+          "description": "Metal implants, pacemakers, devices that affect imaging or treatment.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "device": { "type": "string", "examples": ["TPLO plate right stifle", "Pacemaker"], "privacyClass": "emergency" },
+              "location": { "type": "string", "privacyClass": "emergency" }
+            }
+          },
+          "privacyClass": "emergency"
+        },
+        "infectiousDiseaseFlag": {
+          "type": "object",
+          "properties": {
+            "isContagious": { "type": "boolean", "privacyClass": "emergency" },
+            "disease": { "type": "string", "examples": ["FIV positive", "Ringworm (active)", "Parvovirus"], "privacyClass": "emergency" },
+            "isolationRequired": { "type": "boolean", "privacyClass": "emergency" }
+          },
+          "privacyClass": "emergency"
+        },
+        "pregnancyStatus": {
+          "type": "object",
+          "properties": {
+            "isPregnant": { "type": "boolean", "privacyClass": "emergency" },
+            "gestationWeeks": { "type": "integer", "privacyClass": "emergency" }
+          },
+          "privacyClass": "emergency"
+        },
+        "bloodType": { "type": "string", "description": "Dogs: DEA 1.1+/-, Cats: Type A/B/AB.", "privacyClass": "emergency" },
+        "rabiesVaccinationCurrent": { "type": "boolean", "description": "Legally required disclosure in many jurisdictions.", "privacyClass": "emergency" },
+        "dnrStatus": { "type": "boolean", "description": "Do Not Resuscitate directive.", "privacyClass": "emergency" }
+      },
+      "privacyClass": "emergency"
+    },
+
+    "emergencyContacts": {
+      "type": "array",
+      "description": "Owner and authorized contacts, in priority order.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "privacyClass": "emergency" },
+          "phone": { "type": "string", "privacyClass": "emergency" },
+          "relationship": { "type": "string", "examples": ["owner", "spouse", "pet_sitter", "barn_manager"], "privacyClass": "emergency" },
+          "authorizationLevel": { "type": "string", "enum": ["emergency_medical_only", "full_medical_decisions", "financial_decisions", "all_decisions"], "privacyClass": "emergency" },
+          "priority": { "type": "integer", "description": "1 = first call.", "privacyClass": "emergency" }
+        }
+      },
+      "privacyClass": "emergency"
+    },
+
+    "primaryVet": {
+      "type": "object",
+      "description": "Primary veterinarian for record transfer and consultation.",
+      "properties": {
+        "practiceName": { "type": "string", "privacyClass": "emergency" },
+        "veterinarianName": { "type": "string", "privacyClass": "emergency" },
+        "phone": { "type": "string", "privacyClass": "emergency" }
+      },
+      "privacyClass": "emergency"
+    },
+
+    "insuranceInfo": {
+      "type": "object",
+      "description": "Insurance carrier info for ER billing coordination.",
+      "properties": {
+        "insurerName": { "type": "string", "privacyClass": "emergency" },
+        "policyNumber": { "type": "string", "privacyClass": "emergency" },
+        "claimsPhone": { "type": "string", "privacyClass": "emergency" }
+      },
+      "privacyClass": "emergency"
+    }
+  }
+}

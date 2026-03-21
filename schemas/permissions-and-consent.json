@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/permissions-and-consent.json",
+  "title": "PetProData — Permissions, Consent & Audit Log",
+  "description": "Access grants, time-limited leases, research consent, and tamper-proof audit trail. Every disclosure is tracked — who accessed what, when, why, and for how long. This is the governance layer that makes selective privacy real.",
+  "type": "object",
+  "required": ["animalDID", "accessGrants"],
+  "properties": {
+
+    "animalDID": { "type": "string", "privacyClass": "public" },
+
+    "accessGrants": {
+      "type": "array",
+      "description": "Active and historical access grants. Each grant is a permission for a specific entity to access specific folders/fields for a specific purpose and duration.",
+      "items": {
+        "type": "object",
+        "required": ["grantId", "grantedTo", "folders", "purpose", "grantedAt", "status"],
+        "properties": {
+          "grantId": { "type": "string", "description": "Unique grant identifier, anchored on-chain.", "privacyClass": "public" },
+          "grantedTo": {
+            "type": "object",
+            "properties": {
+              "entityDID": { "type": "string", "privacyClass": "shielded" },
+              "entityName": { "type": "string", "privacyClass": "shielded" },
+              "entityRole": { "type": "string", "enum": ["veterinarian", "emergency_clinic", "specialist", "boarding_facility", "groomer", "trainer", "insurer", "breeder", "rescue", "researcher", "buyer", "regulator", "animal_control", "pet_sitter", "family_member"], "privacyClass": "shielded" }
+            },
+            "privacyClass": "shielded"
+          },
+          "grantedBy": {
+            "type": "object",
+            "properties": {
+              "ownerDID": { "type": "string", "privacyClass": "shielded" },
+              "ownerName": { "type": "string", "privacyClass": "shielded" }
+            },
+            "privacyClass": "shielded"
+          },
+          "folders": {
+            "type": "array",
+            "description": "Which record folders this grant covers.",
+            "items": { "type": "string", "enum": ["identity", "vaccines", "allergies", "medications", "surgeries", "lab_results", "imaging", "chronic_conditions", "insurance", "breeding", "nutrition", "behavioral", "research_consent", "end_of_life", "emergency_packet", "ownership", "rwa_valuation", "billing", "all"] },
+            "privacyClass": "shielded"
+          },
+          "proofOnly": {
+            "type": "boolean",
+            "description": "If true, recipient gets zk-proof attestations only (e.g. 'vaccines current = true'), not raw data.",
+            "default": false,
+            "privacyClass": "shielded"
+          },
+          "purpose": { "type": "string", "description": "Why access is granted.", "examples": ["Annual wellness exam", "Boarding stay 3/15-3/22", "Insurance claim #4521", "Breed eligibility study"], "privacyClass": "shielded" },
+          "grantedAt": { "type": "string", "format": "date-time", "privacyClass": "shielded" },
+          "expiresAt": { "type": "string", "format": "date-time", "description": "When access automatically revokes. Null = permanent until manually revoked.", "privacyClass": "shielded" },
+          "status": { "type": "string", "enum": ["active", "expired", "revoked", "pending_approval"], "privacyClass": "public" },
+          "revokedAt": { "type": "string", "format": "date-time", "privacyClass": "shielded" },
+          "revokedReason": { "type": "string", "privacyClass": "shielded" },
+          "transactionHash": { "type": "string", "description": "On-chain tx hash anchoring this grant.", "privacyClass": "public" }
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "researchConsent": {
+      "type": "object",
+      "description": "Owner's consent preferences for research marketplace participation.",
+      "properties": {
+        "globalOptIn": { "type": "boolean", "description": "Whether this animal's data is available for research matching.", "default": false, "privacyClass": "shielded" },
+        "allowedStudyTypes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["breed_health_survey", "disease_prevalence", "drug_efficacy_trial", "nutrition_study", "behavioral_study", "genetic_research", "longevity_study", "vaccine_safety", "environmental_exposure"] },
+          "privacyClass": "shielded"
+        },
+        "excludedConditions": {
+          "type": "array",
+          "description": "Conditions the owner does NOT want disclosed even for research.",
+          "items": { "type": "string" },
+          "privacyClass": "restricted"
+        },
+        "compensationPreference": {
+          "type": "string",
+          "enum": ["micropayment_per_query", "flat_fee_per_study", "donation_to_rescue", "no_compensation", "negotiable"],
+          "privacyClass": "shielded"
+        },
+        "walletAddress": { "type": "string", "description": "Wallet for micropayment receipt.", "privacyClass": "restricted" },
+        "activeStudies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "studyId": { "type": "string", "privacyClass": "shielded" },
+              "studyName": { "type": "string", "privacyClass": "shielded" },
+              "sponsorDID": { "type": "string", "privacyClass": "shielded" },
+              "enrolledDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+              "compensationEarned": { "type": "number", "privacyClass": "restricted" }
+            }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "auditLog": {
+      "type": "array",
+      "description": "Tamper-proof log of every access event. Every time anyone views, downloads, or receives a proof about this animal's data, it is logged here and anchored on-chain.",
+      "items": {
+        "type": "object",
+        "required": ["eventId", "timestamp", "action", "actorDID"],
+        "properties": {
+          "eventId": { "type": "string", "privacyClass": "public" },
+          "timestamp": { "type": "string", "format": "date-time", "privacyClass": "public" },
+          "action": { "type": "string", "enum": ["view", "download", "proof_generated", "proof_verified", "grant_created", "grant_revoked", "record_created", "record_updated", "record_amended", "emergency_reveal", "transfer_initiated", "transfer_completed", "research_query_matched", "insurance_claim_accessed"], "privacyClass": "public" },
+          "actorDID": { "type": "string", "description": "Who performed the action.", "privacyClass": "shielded" },
+          "actorRole": { "type": "string", "privacyClass": "shielded" },
+          "foldersAccessed": { "type": "array", "items": { "type": "string" }, "privacyClass": "shielded" },
+          "grantId": { "type": "string", "description": "Which access grant authorized this action.", "privacyClass": "shielded" },
+          "ipAddress": { "type": "string", "description": "Requesting IP (hashed for privacy).", "privacyClass": "restricted" },
+          "transactionHash": { "type": "string", "description": "On-chain anchor for this audit event.", "privacyClass": "public" }
+        }
+      },
+      "privacyClass": "shielded"
+    }
+  }
+}

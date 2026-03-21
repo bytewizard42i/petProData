@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/ownership-and-guardianship.json",
+  "title": "PetProData — Ownership, Guardianship & Transfer History",
+  "description": "Legal ownership, guardianship, co-ownership, custody arrangements, and full provenance chain for a companion animal. This is the RWA (Real World Asset) core — every animal has a legal and financial identity beyond its medical record.",
+  "type": "object",
+  "required": ["animalDID", "currentOwnership", "provenanceChain"],
+  "properties": {
+
+    "animalDID": {
+      "type": "string",
+      "description": "Reference to the animal's persistent DID.",
+      "privacyClass": "public"
+    },
+
+    "currentOwnership": {
+      "type": "object",
+      "description": "Current legal ownership or guardianship. Supports single owner, co-ownership, and organizational custody.",
+      "required": ["primaryOwner", "ownershipType", "effectiveDate"],
+      "properties": {
+        "primaryOwner": {
+          "type": "object",
+          "properties": {
+            "ownerDID": { "type": "string", "description": "DID of the primary owner/guardian.", "privacyClass": "shielded" },
+            "legalName": { "type": "string", "description": "Full legal name of owner.", "privacyClass": "restricted" },
+            "contactPhone": { "type": "string", "privacyClass": "shielded" },
+            "contactEmail": { "type": "string", "privacyClass": "shielded" },
+            "address": {
+              "type": "object",
+              "properties": {
+                "street": { "type": "string", "privacyClass": "restricted" },
+                "city": { "type": "string", "privacyClass": "shielded" },
+                "state": { "type": "string", "privacyClass": "shielded" },
+                "postalCode": { "type": "string", "privacyClass": "restricted" },
+                "country": { "type": "string", "privacyClass": "public" }
+              },
+              "privacyClass": "restricted"
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "coOwners": {
+          "type": "array",
+          "description": "Additional co-owners (common in breeding arrangements, shared custody, family situations).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ownerDID": { "type": "string", "privacyClass": "shielded" },
+              "legalName": { "type": "string", "privacyClass": "restricted" },
+              "ownershipPercentage": { "type": "number", "description": "Percentage of ownership (for RWA valuation splits).", "privacyClass": "shielded" },
+              "role": { "type": "string", "enum": ["co_owner", "breeder_retained", "family_member", "business_partner"], "privacyClass": "shielded" }
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "ownershipType": {
+          "type": "string",
+          "description": "Legal classification of ownership.",
+          "enum": [
+            "sole_owner",
+            "co_ownership",
+            "breeder_co_own",
+            "rescue_foster",
+            "rescue_adopted",
+            "organizational",
+            "sanctuary",
+            "service_animal_program",
+            "estate_inherited"
+          ],
+          "privacyClass": "shielded"
+        },
+        "effectiveDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date current ownership became effective.",
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "emergencyContacts": {
+      "type": "array",
+      "description": "People authorized to make decisions if owner is unreachable. Critical for emergency workflow.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "contactDID": { "type": "string", "privacyClass": "emergency" },
+          "name": { "type": "string", "privacyClass": "emergency" },
+          "phone": { "type": "string", "privacyClass": "emergency" },
+          "relationship": { "type": "string", "examples": ["spouse", "parent", "roommate", "barn_manager", "pet_sitter"], "privacyClass": "emergency" },
+          "authorizationLevel": {
+            "type": "string",
+            "description": "What this contact is authorized to do.",
+            "enum": ["emergency_medical_only", "full_medical_decisions", "financial_decisions", "all_decisions"],
+            "privacyClass": "emergency"
+          },
+          "priority": { "type": "integer", "description": "Contact order (1 = first call).", "privacyClass": "emergency" }
+        }
+      },
+      "privacyClass": "emergency"
+    },
+
+    "veterinaryRelationships": {
+      "type": "object",
+      "description": "VCPR (Veterinary-Client-Patient Relationship) records. Legal basis for care.",
+      "properties": {
+        "primaryVet": {
+          "type": "object",
+          "properties": {
+            "practiceDID": { "type": "string", "privacyClass": "shielded" },
+            "practiceName": { "type": "string", "privacyClass": "shielded" },
+            "veterinarianName": { "type": "string", "privacyClass": "shielded" },
+            "licenseNumber": { "type": "string", "privacyClass": "restricted" },
+            "vcprEstablished": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "vcprExpires": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "phone": { "type": "string", "privacyClass": "emergency" }
+          },
+          "privacyClass": "shielded"
+        },
+        "emergencyClinic": {
+          "type": "object",
+          "properties": {
+            "practiceDID": { "type": "string", "privacyClass": "emergency" },
+            "practiceName": { "type": "string", "privacyClass": "emergency" },
+            "phone": { "type": "string", "privacyClass": "emergency" },
+            "address": { "type": "string", "privacyClass": "emergency" }
+          },
+          "privacyClass": "emergency"
+        },
+        "specialists": {
+          "type": "array",
+          "description": "Board-certified specialists the animal has seen.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "practiceDID": { "type": "string", "privacyClass": "shielded" },
+              "specialty": { "type": "string", "examples": ["DACVS (surgery)", "DACVIM (internal med)", "DACVO (ophthalmology)", "DACVD (dermatology)"], "privacyClass": "shielded" },
+              "veterinarianName": { "type": "string", "privacyClass": "shielded" },
+              "lastVisit": { "type": "string", "format": "date", "privacyClass": "shielded" }
+            }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "acquisition": {
+      "type": "object",
+      "description": "How the current owner acquired this animal. Critical for provenance and RWA valuation.",
+      "properties": {
+        "acquisitionType": {
+          "type": "string",
+          "enum": ["purchased_breeder", "purchased_private", "purchased_store", "adopted_rescue", "adopted_shelter", "born_in_home", "gifted", "inherited", "found_stray", "transferred_service_program", "other"],
+          "privacyClass": "shielded"
+        },
+        "acquisitionDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+        "acquisitionPrice": {
+          "type": "object",
+          "description": "Purchase price or adoption fee. Key RWA field.",
+          "properties": {
+            "amount": { "type": "number", "privacyClass": "restricted" },
+            "currency": { "type": "string", "default": "USD", "privacyClass": "restricted" },
+            "includesSpayNeuter": { "type": "boolean", "privacyClass": "shielded" },
+            "includesVaccinations": { "type": "boolean", "privacyClass": "shielded" },
+            "includesMicrochip": { "type": "boolean", "privacyClass": "shielded" }
+          },
+          "privacyClass": "restricted"
+        },
+        "sourceEntity": {
+          "type": "object",
+          "description": "Breeder, rescue, shelter, or prior owner.",
+          "properties": {
+            "entityDID": { "type": "string", "privacyClass": "shielded" },
+            "entityName": { "type": "string", "privacyClass": "shielded" },
+            "entityType": { "type": "string", "enum": ["breeder", "rescue", "shelter", "private_owner", "pet_store", "service_program", "other"], "privacyClass": "shielded" },
+            "location": { "type": "string", "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        },
+        "contractHash": {
+          "type": "string",
+          "description": "SHA-256 hash of the purchase/adoption contract stored off-chain.",
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "provenanceChain": {
+      "type": "array",
+      "description": "Complete chronological ownership and custody history. The RWA audit trail. Every transfer, foster placement, boarding stint, and custody change is recorded here.",
+      "items": {
+        "type": "object",
+        "required": ["eventType", "effectiveDate", "fromEntityDID", "toEntityDID"],
+        "properties": {
+          "eventType": {
+            "type": "string",
+            "enum": ["birth", "purchase", "adoption", "foster_placement", "foster_return", "ownership_transfer", "co_ownership_added", "co_ownership_removed", "boarding_start", "boarding_end", "rescue_intake", "surrender", "inheritance", "court_ordered_transfer", "return_to_breeder", "deceased"],
+            "privacyClass": "shielded"
+          },
+          "effectiveDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "fromEntityDID": { "type": "string", "description": "DID of the entity releasing custody.", "privacyClass": "shielded" },
+          "toEntityDID": { "type": "string", "description": "DID of the entity receiving custody.", "privacyClass": "shielded" },
+          "reason": { "type": "string", "description": "Reason for transfer.", "privacyClass": "restricted" },
+          "transactionHash": { "type": "string", "description": "On-chain transaction hash anchoring this event.", "privacyClass": "public" },
+          "contractHash": { "type": "string", "description": "Hash of any legal documents associated with this transfer.", "privacyClass": "shielded" },
+          "witnessedBy": { "type": "string", "description": "DID of a witness or notarizing entity, if applicable.", "privacyClass": "shielded" }
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "legalDocuments": {
+      "type": "array",
+      "description": "Hashes and references to legal documents: adoption contracts, spay/neuter agreements, breeder contracts, custody agreements, pet trusts, wills.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": ["adoption_contract", "purchase_contract", "breeder_agreement", "spay_neuter_agreement", "custody_agreement", "pet_trust", "will_provision", "lien", "insurance_policy", "service_animal_certification", "other"],
+            "privacyClass": "shielded"
+          },
+          "documentHash": { "type": "string", "description": "SHA-256 hash for integrity verification.", "privacyClass": "public" },
+          "documentUri": { "type": "string", "description": "Encrypted off-chain storage URI.", "privacyClass": "restricted" },
+          "issuedDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "expirationDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "parties": {
+            "type": "array",
+            "items": { "type": "string", "description": "DIDs of parties to the document." },
+            "privacyClass": "restricted"
+          }
+        }
+      },
+      "privacyClass": "restricted"
+    },
+
+    "endOfLifeDirectives": {
+      "type": "object",
+      "description": "Owner's wishes regarding end-of-life care. Emotionally and legally critical.",
+      "properties": {
+        "dnrStatus": {
+          "type": "boolean",
+          "description": "Do Not Resuscitate directive. If true, the animal should not receive CPR.",
+          "privacyClass": "emergency"
+        },
+        "qualityOfLifeThreshold": {
+          "type": "string",
+          "description": "Owner's written guidance on when euthanasia should be considered.",
+          "privacyClass": "restricted"
+        },
+        "bodyDisposition": {
+          "type": "string",
+          "description": "Owner's preference for remains handling.",
+          "enum": ["private_cremation", "communal_cremation", "burial_home", "burial_cemetery", "veterinary_disposal", "undecided"],
+          "privacyClass": "restricted"
+        },
+        "authorizedDecisionMakers": {
+          "type": "array",
+          "description": "DIDs of people authorized to make end-of-life decisions if owner is unavailable.",
+          "items": { "type": "string" },
+          "privacyClass": "emergency"
+        }
+      },
+      "privacyClass": "restricted"
+    }
+  }
+}

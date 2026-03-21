@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/animal-identity.json",
+  "title": "PetProData — Animal Identity (Signalment & Registration)",
+  "description": "Core identity record for a companion animal. This is the root entity that all other records attach to. Uses standard veterinary signalment fields. The animal — not the owner — is the center of the record.",
+  "type": "object",
+  "required": ["animalDID", "species", "signalment", "registration", "createdAt"],
+  "properties": {
+
+    "animalDID": {
+      "type": "string",
+      "description": "Persistent decentralized identifier for this animal. Survives ownership transfers, boarding, rescue intake, and referrals. Minted once, never changes.",
+      "pattern": "^did:midnight:pet:[a-zA-Z0-9]+$",
+      "examples": ["did:midnight:pet:a1b2c3d4e5f6"],
+      "privacyClass": "public"
+    },
+
+    "species": {
+      "type": "string",
+      "description": "Species classification.",
+      "enum": ["canine", "feline", "avian", "reptile", "small_mammal", "lagomorph", "equine_miniature", "other"],
+      "privacyClass": "public"
+    },
+
+    "signalment": {
+      "type": "object",
+      "description": "Standard veterinary signalment — the 'who' of the patient. This is what a vet needs at first glance.",
+      "required": ["breed", "sex", "dateOfBirth"],
+      "properties": {
+        "breed": {
+          "type": "string",
+          "description": "Primary breed or breed mix. Use AKC/CFA/registry names where applicable.",
+          "examples": ["Labrador Retriever", "Domestic Shorthair", "Mixed Breed — Shepherd/Husky"],
+          "privacyClass": "public"
+        },
+        "breedSecondary": {
+          "type": "string",
+          "description": "Secondary breed in a known cross. Null if purebred or unknown.",
+          "privacyClass": "public"
+        },
+        "sex": {
+          "type": "string",
+          "description": "Biological sex and reproductive status.",
+          "enum": ["male_intact", "male_neutered", "female_intact", "female_spayed", "unknown"],
+          "privacyClass": "shielded"
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of birth. If unknown, estimated DOB with isEstimated flag.",
+          "privacyClass": "shielded"
+        },
+        "dateOfBirthEstimated": {
+          "type": "boolean",
+          "description": "True if DOB is an estimate (common for rescues).",
+          "default": false,
+          "privacyClass": "public"
+        },
+        "color": {
+          "type": "string",
+          "description": "Primary coat/skin color.",
+          "examples": ["Black", "Tricolor", "Orange Tabby", "Blue Merle"],
+          "privacyClass": "public"
+        },
+        "markings": {
+          "type": "string",
+          "description": "Distinguishing markings, scars, or identifying features.",
+          "examples": ["White blaze on chest", "Notched left ear", "No tail (natural bobtail)"],
+          "privacyClass": "public"
+        },
+        "currentWeightKg": {
+          "type": "number",
+          "description": "Most recent recorded weight in kilograms.",
+          "privacyClass": "shielded"
+        },
+        "bodyConditionScore": {
+          "type": "integer",
+          "description": "BCS on the standard 1-9 scale (1=emaciated, 5=ideal, 9=obese).",
+          "minimum": 1,
+          "maximum": 9,
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "names": {
+      "type": "object",
+      "description": "All known names for this animal.",
+      "properties": {
+        "callName": {
+          "type": "string",
+          "description": "The name the animal responds to. What the owner calls them.",
+          "examples": ["Buddy", "Luna", "Max"],
+          "privacyClass": "shielded"
+        },
+        "registeredName": {
+          "type": "string",
+          "description": "Formal registered name with breed registry, if any.",
+          "examples": ["CH Sunnyside's Golden Promise"],
+          "privacyClass": "shielded"
+        },
+        "priorNames": {
+          "type": "array",
+          "description": "Previous names (shelter name, foster name, prior owner name).",
+          "items": { "type": "string" },
+          "privacyClass": "restricted"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "registration": {
+      "type": "object",
+      "description": "Microchip, tattoo, breed registry, and licensing data.",
+      "properties": {
+        "microchip": {
+          "type": "object",
+          "description": "ISO 11784/11785 compliant microchip data.",
+          "properties": {
+            "chipNumber": {
+              "type": "string",
+              "description": "15-digit ISO microchip number or 10-digit AVID number.",
+              "pattern": "^[0-9A-Fa-f]{9,15}$",
+              "privacyClass": "shielded"
+            },
+            "chipManufacturer": {
+              "type": "string",
+              "description": "Chip manufacturer (HomeAgain, 24PetWatch, Datamars, AVID, etc.).",
+              "privacyClass": "public"
+            },
+            "implantDate": {
+              "type": "string",
+              "format": "date",
+              "description": "Date microchip was implanted.",
+              "privacyClass": "shielded"
+            },
+            "implantLocation": {
+              "type": "string",
+              "description": "Anatomical location of chip implant.",
+              "default": "subcutaneous, dorsal midline between scapulae",
+              "privacyClass": "shielded"
+            },
+            "registryName": {
+              "type": "string",
+              "description": "Registry the chip is registered with.",
+              "privacyClass": "public"
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "tattoo": {
+          "type": "object",
+          "properties": {
+            "tattooId": { "type": "string", "privacyClass": "shielded" },
+            "tattooLocation": { "type": "string", "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        },
+        "breedRegistration": {
+          "type": "object",
+          "properties": {
+            "registryBody": {
+              "type": "string",
+              "description": "AKC, CFA, UKC, TICA, etc.",
+              "privacyClass": "public"
+            },
+            "registrationNumber": {
+              "type": "string",
+              "privacyClass": "shielded"
+            },
+            "registeredDate": {
+              "type": "string",
+              "format": "date",
+              "privacyClass": "shielded"
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "localLicense": {
+          "type": "object",
+          "properties": {
+            "licenseNumber": { "type": "string", "privacyClass": "shielded" },
+            "jurisdiction": { "type": "string", "privacyClass": "public" },
+            "expirationDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "rabiesTagNumber": { "type": "string", "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "dnaProfile": {
+      "type": "object",
+      "description": "Genetic testing results and breed composition.",
+      "properties": {
+        "testProvider": {
+          "type": "string",
+          "description": "Embark, Wisdom Panel, Optimal Selection, UC Davis VGL, etc.",
+          "privacyClass": "public"
+        },
+        "testDate": {
+          "type": "string",
+          "format": "date",
+          "privacyClass": "shielded"
+        },
+        "breedComposition": {
+          "type": "array",
+          "description": "Breed percentages from DNA test.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "breed": { "type": "string" },
+              "percentage": { "type": "number" }
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "geneticHealthMarkers": {
+          "type": "array",
+          "description": "Carrier status and risk markers from genetic panel.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "marker": { "type": "string", "examples": ["MDR1", "DM", "vWD Type 1", "PRA-prcd"] },
+              "status": { "type": "string", "enum": ["clear", "carrier", "at_risk", "affected"] },
+              "genotype": { "type": "string", "examples": ["WT/WT", "WT/M", "M/M"] }
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "coi": {
+          "type": "number",
+          "description": "Coefficient of Inbreeding percentage.",
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "photos": {
+      "type": "array",
+      "description": "Identification photos. At least one current photo recommended.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "photoHash": { "type": "string", "description": "SHA-256 hash of the photo file.", "privacyClass": "public" },
+          "photoUri": { "type": "string", "description": "Encrypted off-chain storage URI.", "privacyClass": "shielded" },
+          "dateTaken": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "photoType": { "type": "string", "enum": ["identification", "markings", "condition", "other"], "privacyClass": "public" }
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when this animal identity was first minted on-chain.",
+      "privacyClass": "public"
+    },
+
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of most recent identity update.",
+      "privacyClass": "public"
+    },
+
+    "status": {
+      "type": "string",
+      "description": "Current life status of the animal.",
+      "enum": ["alive", "deceased", "missing", "transferred", "unknown"],
+      "privacyClass": "public"
+    }
+  }
+}

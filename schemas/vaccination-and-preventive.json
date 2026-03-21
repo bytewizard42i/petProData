@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/vaccination-and-preventive.json",
+  "title": "PetProData — Vaccination & Preventive Care Records",
+  "description": "Vaccination history, parasite prevention, and wellness protocols. Uses AAHA (American Animal Hospital Association) and WSAVA vaccination guidelines as reference. This is the most commonly shared folder — boarding, daycare, groomers, and travel all require proof of vaccination.",
+  "type": "object",
+  "required": ["animalDID", "vaccinations"],
+  "properties": {
+
+    "animalDID": {
+      "type": "string",
+      "privacyClass": "public"
+    },
+
+    "vaccinations": {
+      "type": "array",
+      "description": "Complete vaccination history. Each administration is a separate record.",
+      "items": {
+        "type": "object",
+        "required": ["vaccineName", "dateAdministered", "providerDID"],
+        "properties": {
+          "vaccineName": {
+            "type": "string",
+            "description": "Vaccine product name as it appears on the label.",
+            "examples": [
+              "Rabies (Imrab 3 TF)",
+              "DA2PP (Nobivac Canine 1-DAPPv)",
+              "Bordetella (Bronchi-Shield ORAL)",
+              "Leptospirosis (Nobivac Lepto4)",
+              "Canine Influenza (Nobivac CIV H3N2+H3N8)",
+              "Lyme (Vanguard crLyme)",
+              "FVRCP (Purevax Feline 3)",
+              "FeLV (Purevax Recombinant)"
+            ],
+            "privacyClass": "shielded"
+          },
+          "vaccineType": {
+            "type": "string",
+            "description": "AAHA classification: core vaccines are recommended for all pets; non-core are risk-based.",
+            "enum": ["core", "non_core", "not_recommended"],
+            "privacyClass": "public"
+          },
+          "targetDisease": {
+            "type": "array",
+            "description": "Disease(s) this vaccine protects against.",
+            "items": { "type": "string" },
+            "examples": [
+              ["Rabies"],
+              ["Distemper", "Adenovirus-2", "Parainfluenza", "Parvovirus"],
+              ["Bordetella bronchiseptica"],
+              ["Feline Viral Rhinotracheitis", "Calicivirus", "Panleukopenia"]
+            ],
+            "privacyClass": "public"
+          },
+          "manufacturer": { "type": "string", "examples": ["Boehringer Ingelheim", "Merck", "Zoetis", "Elanco"], "privacyClass": "shielded" },
+          "lotNumber": { "type": "string", "description": "Vaccine lot number for recall traceability.", "privacyClass": "shielded" },
+          "serialNumber": { "type": "string", "privacyClass": "shielded" },
+          "expirationDate": { "type": "string", "format": "date", "description": "Vaccine product expiration.", "privacyClass": "shielded" },
+          "dateAdministered": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "dueDate": { "type": "string", "format": "date", "description": "Next due date based on manufacturer and AAHA guidelines.", "privacyClass": "shielded" },
+          "route": {
+            "type": "string",
+            "enum": ["subcutaneous", "intramuscular", "intranasal", "oral", "transdermal"],
+            "privacyClass": "shielded"
+          },
+          "injectionSite": {
+            "type": "string",
+            "description": "Anatomical site of injection. AAFP feline guidelines recommend specific limb sites for sarcoma traceability.",
+            "examples": ["Right rear limb (distal)", "Left rear limb (distal)", "Right forelimb", "Intranasal"],
+            "privacyClass": "shielded"
+          },
+          "providerDID": { "type": "string", "description": "DID of the administering veterinarian.", "privacyClass": "shielded" },
+          "providerName": { "type": "string", "privacyClass": "shielded" },
+          "facilityDID": { "type": "string", "privacyClass": "shielded" },
+          "isBooster": { "type": "boolean", "description": "True if this is a booster of a previously administered vaccine.", "privacyClass": "shielded" },
+          "durationYears": {
+            "type": "integer",
+            "description": "Duration of immunity. 1-year or 3-year for rabies, varies for others.",
+            "enum": [1, 3],
+            "privacyClass": "public"
+          },
+          "adverseReaction": {
+            "type": "object",
+            "description": "Any adverse reaction noted post-vaccination.",
+            "properties": {
+              "occurred": { "type": "boolean", "privacyClass": "emergency" },
+              "reactionType": { "type": "string", "enum": ["none", "mild_local", "mild_systemic", "moderate", "severe_anaphylaxis", "injection_site_sarcoma"], "privacyClass": "emergency" },
+              "description": { "type": "string", "privacyClass": "shielded" },
+              "treatmentRequired": { "type": "boolean", "privacyClass": "shielded" }
+            },
+            "privacyClass": "emergency"
+          },
+          "rabiesTagNumber": {
+            "type": "string",
+            "description": "Rabies tag number issued with this vaccination. Required by law in most jurisdictions.",
+            "privacyClass": "shielded"
+          },
+          "rabiesCertificateHash": {
+            "type": "string",
+            "description": "SHA-256 hash of the official rabies certificate for integrity verification.",
+            "privacyClass": "public"
+          },
+          "complianceStatus": {
+            "type": "string",
+            "description": "Whether this vaccine is current. Automatically computed from dueDate.",
+            "enum": ["current", "overdue", "expired", "exempt_medical", "exempt_titer"],
+            "privacyClass": "public"
+          }
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "titerResults": {
+      "type": "array",
+      "description": "Antibody titer tests as alternative to revaccination. Increasingly accepted by boarding facilities and some jurisdictions.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "testDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+          "disease": { "type": "string", "examples": ["Distemper", "Parvovirus", "Rabies"], "privacyClass": "shielded" },
+          "result": { "type": "string", "enum": ["adequate", "inadequate", "equivocal"], "privacyClass": "shielded" },
+          "titerValue": { "type": "string", "description": "Numeric or ratio titer value.", "privacyClass": "shielded" },
+          "labName": { "type": "string", "examples": ["Kansas State VDL", "Cornell AHL"], "privacyClass": "shielded" },
+          "acceptedAsExemption": { "type": "boolean", "description": "Whether this titer was accepted in lieu of vaccination.", "privacyClass": "public" }
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "parasitePrevention": {
+      "type": "object",
+      "description": "Flea, tick, heartworm, and intestinal parasite prevention protocols.",
+      "properties": {
+        "heartwormPrevention": {
+          "type": "object",
+          "properties": {
+            "productName": { "type": "string", "examples": ["Heartgard Plus", "Simparica Trio", "ProHeart 12", "Interceptor Plus"], "privacyClass": "shielded" },
+            "frequency": { "type": "string", "enum": ["monthly_oral", "monthly_topical", "every_6_months_injectable", "every_12_months_injectable"], "privacyClass": "shielded" },
+            "lastAdministered": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "nextDue": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "complianceStatus": { "type": "string", "enum": ["current", "overdue", "lapsed", "not_on_prevention"], "privacyClass": "public" }
+          },
+          "privacyClass": "shielded"
+        },
+        "fleaTickPrevention": {
+          "type": "object",
+          "properties": {
+            "productName": { "type": "string", "examples": ["Simparica TRIO", "NexGard", "Bravecto", "Frontline Plus", "Seresto collar"], "privacyClass": "shielded" },
+            "frequency": { "type": "string", "privacyClass": "shielded" },
+            "lastAdministered": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "nextDue": { "type": "string", "format": "date", "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        },
+        "lastHeartwormTest": {
+          "type": "object",
+          "description": "Annual heartworm antigen test. Required before dispensing prevention.",
+          "properties": {
+            "testDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "result": { "type": "string", "enum": ["negative", "positive", "inconclusive"], "privacyClass": "shielded" },
+            "testType": { "type": "string", "examples": ["SNAP 4Dx Plus", "SNAP Heartworm RT", "In-house ELISA"], "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        },
+        "lastFecalExam": {
+          "type": "object",
+          "description": "Fecal flotation or antigen test for intestinal parasites.",
+          "properties": {
+            "testDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+            "result": { "type": "string", "enum": ["negative", "positive"], "privacyClass": "shielded" },
+            "parasitesFound": { "type": "array", "items": { "type": "string" }, "examples": [["Roundworm (Toxocara)"], ["Giardia"]], "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "wellnessProtocol": {
+      "type": "object",
+      "description": "Recommended wellness schedule based on age, breed, and risk factors.",
+      "properties": {
+        "nextWellnessExam": { "type": "string", "format": "date", "privacyClass": "shielded" },
+        "nextDentalCleaning": { "type": "string", "format": "date", "privacyClass": "shielded" },
+        "seniorScreeningDue": { "type": "string", "format": "date", "description": "Recommended age 7+ for dogs, 10+ for cats.", "privacyClass": "shielded" },
+        "spayNeuterDate": { "type": "string", "format": "date", "description": "Date of spay/neuter surgery if performed.", "privacyClass": "shielded" },
+        "dentalGrade": { "type": "integer", "minimum": 0, "maximum": 4, "description": "Dental disease grade (0=healthy, 4=severe periodontal disease).", "privacyClass": "shielded" }
+      },
+      "privacyClass": "shielded"
+    }
+  }
+}

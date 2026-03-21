@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petprodata.io/schemas/clinical-records.json",
+  "title": "PetProData — Clinical Records (SOAP Format)",
+  "description": "Veterinary clinical encounter records using industry-standard SOAP format. Each visit, procedure, lab, imaging study, and prescription is a separate record linked to the animal's DID. Designed to feel native to any vet using practice management software.",
+  "type": "object",
+  "required": ["animalDID", "recordType", "encounter"],
+  "properties": {
+
+    "animalDID": {
+      "type": "string",
+      "description": "Reference to the animal's persistent DID.",
+      "privacyClass": "public"
+    },
+
+    "recordId": {
+      "type": "string",
+      "description": "Unique identifier for this clinical record.",
+      "privacyClass": "public"
+    },
+
+    "recordType": {
+      "type": "string",
+      "description": "Category of clinical record.",
+      "enum": [
+        "wellness_exam",
+        "sick_visit",
+        "emergency",
+        "surgery",
+        "dental_procedure",
+        "vaccination_visit",
+        "recheck",
+        "referral_consult",
+        "telemedicine",
+        "hospice_palliative",
+        "euthanasia",
+        "lab_only",
+        "imaging_only",
+        "prescription_refill",
+        "behavioral_consult",
+        "nutritional_consult"
+      ],
+      "privacyClass": "shielded"
+    },
+
+    "encounter": {
+      "type": "object",
+      "description": "The clinical encounter — when, where, who, and why.",
+      "required": ["date", "providerDID", "facilityDID"],
+      "properties": {
+        "date": { "type": "string", "format": "date-time", "description": "Date and time of encounter.", "privacyClass": "shielded" },
+        "providerDID": { "type": "string", "description": "DID of the attending veterinarian.", "privacyClass": "shielded" },
+        "providerName": { "type": "string", "description": "Name of the attending veterinarian.", "privacyClass": "shielded" },
+        "providerCredentials": { "type": "string", "description": "DVM, VMD, board certifications.", "examples": ["DVM", "DVM, DACVS"], "privacyClass": "shielded" },
+        "facilityDID": { "type": "string", "description": "DID of the clinic or hospital.", "privacyClass": "shielded" },
+        "facilityName": { "type": "string", "privacyClass": "shielded" },
+        "reasonForVisit": { "type": "string", "description": "Chief complaint or presenting concern in owner's words.", "examples": ["Not eating for 2 days", "Limping on right rear", "Annual wellness exam"], "privacyClass": "shielded" }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "soap": {
+      "type": "object",
+      "description": "Standard SOAP clinical note. This is how vets think and document.",
+      "properties": {
+        "subjective": {
+          "type": "object",
+          "description": "S — What the owner reports. History from the client's perspective.",
+          "properties": {
+            "chiefComplaint": { "type": "string", "description": "Primary concern in the owner's words.", "privacyClass": "shielded" },
+            "historyOfPresentIllness": { "type": "string", "description": "Timeline and details of the current problem.", "privacyClass": "shielded" },
+            "durationDays": { "type": "number", "description": "How many days the issue has been present.", "privacyClass": "shielded" },
+            "appetite": { "type": "string", "enum": ["normal", "decreased", "increased", "absent", "unknown"], "privacyClass": "shielded" },
+            "waterIntake": { "type": "string", "enum": ["normal", "decreased", "increased", "absent", "unknown"], "privacyClass": "shielded" },
+            "urination": { "type": "string", "enum": ["normal", "increased", "decreased", "straining", "blood_present", "unknown"], "privacyClass": "shielded" },
+            "defecation": { "type": "string", "enum": ["normal", "diarrhea", "constipation", "blood_present", "mucus", "unknown"], "privacyClass": "shielded" },
+            "activityLevel": { "type": "string", "enum": ["normal", "decreased", "lethargic", "hyperactive", "unknown"], "privacyClass": "shielded" },
+            "vomiting": { "type": "boolean", "privacyClass": "shielded" },
+            "coughing": { "type": "boolean", "privacyClass": "shielded" },
+            "sneezing": { "type": "boolean", "privacyClass": "shielded" },
+            "ownerNotes": { "type": "string", "description": "Any additional owner observations.", "privacyClass": "shielded" }
+          },
+          "privacyClass": "shielded"
+        },
+        "objective": {
+          "type": "object",
+          "description": "O — What the vet observes and measures. Physical examination findings.",
+          "properties": {
+            "vitals": {
+              "type": "object",
+              "description": "TPR and weight — the first things recorded at every visit.",
+              "properties": {
+                "temperatureF": { "type": "number", "description": "Rectal temperature in Fahrenheit. Normal dog: 101-102.5F, cat: 100.5-102.5F.", "privacyClass": "shielded" },
+                "heartRateBPM": { "type": "integer", "description": "Heart rate in beats per minute.", "privacyClass": "shielded" },
+                "respiratoryRateBPM": { "type": "integer", "description": "Respiratory rate in breaths per minute.", "privacyClass": "shielded" },
+                "weightKg": { "type": "number", "description": "Weight in kilograms.", "privacyClass": "shielded" },
+                "bodyConditionScore": { "type": "integer", "minimum": 1, "maximum": 9, "description": "BCS 1-9 scale.", "privacyClass": "shielded" },
+                "painScore": { "type": "integer", "minimum": 0, "maximum": 10, "description": "Pain assessment 0-10 (0=no pain, 10=worst).", "privacyClass": "shielded" },
+                "capillaryRefillSec": { "type": "number", "description": "CRT in seconds. Normal <2 seconds.", "privacyClass": "shielded" },
+                "mucousMembranes": { "type": "string", "enum": ["pink_moist", "pale", "tacky", "cyanotic", "icteric", "injected", "other"], "privacyClass": "shielded" },
+                "hydrationStatus": { "type": "string", "enum": ["normal", "mildly_dehydrated", "moderately_dehydrated", "severely_dehydrated"], "privacyClass": "shielded" }
+              },
+              "privacyClass": "shielded"
+            },
+            "physicalExam": {
+              "type": "object",
+              "description": "System-by-system PE findings — how vets actually examine.",
+              "properties": {
+                "general": { "type": "string", "description": "Overall appearance, mentation, posture.", "privacyClass": "shielded" },
+                "eyes": { "type": "string", "description": "EENT — eyes, eyelids, pupils, fundic.", "privacyClass": "shielded" },
+                "ears": { "type": "string", "description": "Pinnae, canals, discharge, odor.", "privacyClass": "shielded" },
+                "nose": { "type": "string", "description": "Nares, discharge, airflow.", "privacyClass": "shielded" },
+                "oralCavity": { "type": "string", "description": "Teeth, gums, tongue, palate, dental score.", "privacyClass": "shielded" },
+                "lymphNodes": { "type": "string", "description": "Mandibular, prescapular, popliteal — size and symmetry.", "privacyClass": "shielded" },
+                "cardiovascular": { "type": "string", "description": "Heart sounds, murmur grade (I-VI), rhythm, pulses.", "privacyClass": "shielded" },
+                "respiratory": { "type": "string", "description": "Lung sounds, effort, pattern.", "privacyClass": "shielded" },
+                "abdominal": { "type": "string", "description": "Palpation findings, organ size, pain, masses.", "privacyClass": "shielded" },
+                "musculoskeletal": { "type": "string", "description": "Gait, ROM, joint effusion, muscle mass.", "privacyClass": "shielded" },
+                "neurological": { "type": "string", "description": "Mentation, cranial nerves, reflexes, proprioception.", "privacyClass": "shielded" },
+                "integument": { "type": "string", "description": "Skin, coat, lesions, parasites, masses.", "privacyClass": "shielded" },
+                "urogenital": { "type": "string", "description": "External genitalia, mammary glands, prostate.", "privacyClass": "shielded" }
+              },
+              "privacyClass": "shielded"
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "assessment": {
+          "type": "object",
+          "description": "A — The vet's clinical judgment. Diagnoses, differentials, and prognosis.",
+          "properties": {
+            "diagnoses": {
+              "type": "array",
+              "description": "Confirmed diagnoses. Use standard veterinary terminology.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "diagnosis": { "type": "string", "examples": ["Otitis externa, left ear", "Grade II/VI systolic murmur", "Cranial cruciate ligament rupture, right stifle"], "privacyClass": "shielded" },
+                  "icdCode": { "type": "string", "description": "ICD code if applicable (vet practices increasingly use coding).", "privacyClass": "shielded" },
+                  "severity": { "type": "string", "enum": ["mild", "moderate", "severe", "critical", "chronic_stable", "chronic_progressive"], "privacyClass": "shielded" },
+                  "isNew": { "type": "boolean", "description": "True if this is a new diagnosis, false if previously established.", "privacyClass": "shielded" }
+                }
+              },
+              "privacyClass": "shielded"
+            },
+            "differentials": {
+              "type": "array",
+              "description": "Rule-out diagnoses still under consideration.",
+              "items": { "type": "string" },
+              "privacyClass": "shielded"
+            },
+            "prognosis": {
+              "type": "string",
+              "enum": ["excellent", "good", "fair", "guarded", "poor", "grave"],
+              "privacyClass": "shielded"
+            },
+            "clinicianNotes": {
+              "type": "string",
+              "description": "Free-text assessment notes from the veterinarian.",
+              "privacyClass": "shielded"
+            }
+          },
+          "privacyClass": "shielded"
+        },
+        "plan": {
+          "type": "object",
+          "description": "P — Treatment plan, diagnostics ordered, medications prescribed, follow-up instructions.",
+          "properties": {
+            "treatmentsPerformed": {
+              "type": "array",
+              "description": "Treatments administered during this visit.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "treatment": { "type": "string", "examples": ["Ear flush and cleaning", "IV fluid therapy — LRS 60ml/hr", "Fine needle aspirate of mass"], "privacyClass": "shielded" },
+                  "bodyRegion": { "type": "string", "privacyClass": "shielded" },
+                  "notes": { "type": "string", "privacyClass": "shielded" }
+                }
+              },
+              "privacyClass": "shielded"
+            },
+            "diagnosticsOrdered": {
+              "type": "array",
+              "description": "Lab work, imaging, and tests ordered.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "testName": { "type": "string", "examples": ["CBC/Chem panel", "Urinalysis", "Abdominal radiographs (3-view)", "SNAP 4Dx Plus", "Thyroid panel"], "privacyClass": "shielded" },
+                  "labName": { "type": "string", "description": "In-house or reference lab name.", "examples": ["IDEXX", "Antech", "In-house"], "privacyClass": "shielded" },
+                  "status": { "type": "string", "enum": ["ordered", "pending", "completed", "cancelled"], "privacyClass": "shielded" },
+                  "resultSummary": { "type": "string", "description": "Brief result summary. Full results in lab-results records.", "privacyClass": "shielded" }
+                }
+              },
+              "privacyClass": "shielded"
+            },
+            "prescriptions": {
+              "type": "array",
+              "description": "Medications prescribed or dispensed.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "drugName": { "type": "string", "examples": ["Clavamox", "Rimadyl", "Gabapentin", "Cerenia", "Apoquel"], "privacyClass": "shielded" },
+                  "genericName": { "type": "string", "examples": ["amoxicillin/clavulanate", "carprofen", "gabapentin", "maropitant", "oclacitinib"], "privacyClass": "shielded" },
+                  "doseMg": { "type": "number", "description": "Dose in milligrams.", "privacyClass": "shielded" },
+                  "route": { "type": "string", "enum": ["oral", "injectable_SQ", "injectable_IM", "injectable_IV", "topical", "ophthalmic", "otic", "transdermal", "rectal", "inhaled"], "privacyClass": "shielded" },
+                  "frequency": { "type": "string", "examples": ["BID (twice daily)", "SID (once daily)", "TID (three times daily)", "q8h", "PRN"], "privacyClass": "shielded" },
+                  "durationDays": { "type": "integer", "privacyClass": "shielded" },
+                  "quantityDispensed": { "type": "string", "privacyClass": "shielded" },
+                  "refillsRemaining": { "type": "integer", "privacyClass": "shielded" },
+                  "isControlledSubstance": { "type": "boolean", "description": "DEA scheduled drug.", "privacyClass": "shielded" },
+                  "deaSchedule": { "type": "string", "enum": ["II", "III", "IV", "V", "none"], "privacyClass": "shielded" }
+                }
+              },
+              "privacyClass": "shielded"
+            },
+            "followUp": {
+              "type": "object",
+              "properties": {
+                "recheckDate": { "type": "string", "format": "date", "privacyClass": "shielded" },
+                "recheckInstructions": { "type": "string", "privacyClass": "shielded" },
+                "referralTo": { "type": "string", "description": "Specialist or facility referred to.", "privacyClass": "shielded" },
+                "clientInstructions": { "type": "string", "description": "Discharge instructions for the owner.", "privacyClass": "shielded" },
+                "activityRestrictions": { "type": "string", "examples": ["Strict crate rest 6 weeks", "Leash walks only", "No jumping or stairs"], "privacyClass": "shielded" },
+                "dietaryChanges": { "type": "string", "privacyClass": "shielded" }
+              },
+              "privacyClass": "shielded"
+            }
+          },
+          "privacyClass": "shielded"
+        }
+      },
+      "privacyClass": "shielded"
+    },
+
+    "billing": {
+      "type": "object",
+      "description": "Cost data for this encounter. Critical for RWA lifetime cost tracking and insurance claims.",
+      "properties": {
+        "lineItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string", "examples": ["Office visit", "CBC/Chemistry panel", "Radiographs (3-view)", "Clavamox 250mg #28"], "privacyClass": "restricted" },
+              "quantity": { "type": "number", "privacyClass": "restricted" },
+              "unitPrice": { "type": "number", "privacyClass": "restricted" },
+              "totalPrice": { "type": "number", "privacyClass": "restricted" },
+              "category": { "type": "string", "enum": ["exam", "diagnostic", "treatment", "surgery", "medication", "hospitalization", "anesthesia", "imaging", "dental", "supplies", "other"], "privacyClass": "restricted" }
+            }
+          },
+          "privacyClass": "restricted"
+        },
+        "subtotal": { "type": "number", "privacyClass": "restricted" },
+        "tax": { "type": "number", "privacyClass": "restricted" },
+        "totalCharged": { "type": "number", "privacyClass": "restricted" },
+        "currency": { "type": "string", "default": "USD", "privacyClass": "restricted" },
+        "invoiceHash": { "type": "string", "description": "SHA-256 hash for invoice integrity verification (insurance claims).", "privacyClass": "public" },
+        "insuranceClaimId": { "type": "string", "description": "Insurance claim reference if submitted.", "privacyClass": "restricted" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "pending", "partial", "insurance_submitted", "collections", "waived"], "privacyClass": "restricted" }
+      },
+      "privacyClass": "restricted"
+    },
+
+    "recordIntegrity": {
+      "type": "object",
+      "description": "On-chain anchoring data for tamper-proof verification.",
+      "properties": {
+        "recordHash": { "type": "string", "description": "SHA-256 hash of the complete clinical record.", "privacyClass": "public" },
+        "transactionHash": { "type": "string", "description": "Midnight transaction hash anchoring this record.", "privacyClass": "public" },
+        "anchoredAt": { "type": "string", "format": "date-time", "description": "When this record was anchored on-chain.", "privacyClass": "public" },
+        "lastModified": { "type": "string", "format": "date-time", "privacyClass": "public" },
+        "modificationCount": { "type": "integer", "description": "Number of amendments to this record.", "privacyClass": "public" }
+      },
+      "privacyClass": "public"
+    }
+  }
+}
