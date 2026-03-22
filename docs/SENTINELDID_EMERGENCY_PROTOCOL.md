@@ -132,6 +132,116 @@ SentinelDID's Downman Switch adapts to pet contexts:
 
 ---
 
+## RFID Microchip Integration — The Physical-to-Digital Bridge
+
+### The Existing Infrastructure
+
+Companion animals already have a globally deployed identity infrastructure: **implanted RFID microchips**. Over 100 million pets worldwide carry ISO-compliant chips. PetProData doesn't need to reinvent animal identification — it needs to **bridge the existing RFID layer to a privacy-preserving DID layer**.
+
+### Microchip Standards
+
+| Standard | Frequency | Use | Coverage |
+|----------|-----------|-----|----------|
+| **ISO 11784/11785** | 134.2 kHz (FDX-B) | International pet/livestock ID | Global standard |
+| **ISO 14223** | 134.2 kHz | Advanced transponders (read/write, sensors) | Emerging |
+| AVID (legacy) | 125 kHz | US legacy chips | US only, declining |
+| HomeAgain (legacy) | 125 kHz | US legacy chips | US only, declining |
+| **ISO 15693 / NFC** | 13.56 MHz | Smart tags, NFC-enabled collars | Growing |
+
+**Target**: ISO 11784/11785 (covers ~90% of modern implants) + NFC smart collar tags as secondary.
+
+### How RFID → DID Binding Works
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  RFID → DID BINDING PROTOCOL                             │
+│                                                          │
+│  ENROLLMENT (one-time, at vet clinic)                    │
+│  ┌─────────────────────────────────────────────┐         │
+│  │ 1. Vet scans pet's RFID microchip           │         │
+│  │    → Reads 15-digit ISO chip number          │         │
+│  │                                              │         │
+│  │ 2. Chip number hashed with domain separator  │         │
+│  │    → persistentHash("petpro:rfid:", chipNum) │         │
+│  │    → Produces deterministic DID identifier   │         │
+│  │                                              │         │
+│  │ 3. DID registered on Midnight                │         │
+│  │    → Links to owner's DID (sealed/private)   │         │
+│  │    → Health records attached to pet DID       │         │
+│  │                                              │         │
+│  │ 4. Owner sets emergency disclosure policy    │         │
+│  │    → Which fields to release in emergencies  │         │
+│  │    → Who can trigger emergency access        │         │
+│  └─────────────────────────────────────────────┘         │
+│                                                          │
+│  EMERGENCY SCAN (in the field)                           │
+│  ┌─────────────────────────────────────────────┐         │
+│  │ 1. Rescuer/vet scans pet's RFID chip         │         │
+│  │    → Same 15-digit number                    │         │
+│  │                                              │         │
+│  │ 2. Hash computed → maps to pet's DID         │         │
+│  │                                              │         │
+│  │ 3. SentinelDID verifies rescuer credentials  │         │
+│  │                                              │         │
+│  │ 4. Emergency health data released            │         │
+│  │    → Medications, allergies, conditions       │         │
+│  │    → Owner notified automatically            │         │
+│  └─────────────────────────────────────────────┘         │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Multi-Layer Identification Strategy
+
+Not all animals are chipped, and chips can fail. PetProData uses a fallback hierarchy:
+
+| Priority | Method | Scan Device | Notes |
+|----------|--------|-------------|-------|
+| 🥇 1 | **RFID microchip** | Universal scanner (ISO compatible) | Most reliable — implanted, can't be lost |
+| 🥈 2 | **NFC smart collar tag** | Smartphone (NFC-enabled) | Easy for civilians/volunteers to scan |
+| 🥉 3 | **QR code collar/tag** | Smartphone camera | Visual backup — works even if chip/NFC fails |
+| 4 | **Visual identification** | AI photo match | Breed, markings, distinguishing features |
+
+**In an emergency, any of these can resolve to the same pet DID.** The DID is the anchor; the scanning method is just the lookup key.
+
+### Hardware Requirements
+
+**For rescue teams / vet clinics**:
+- Universal RFID scanner (ISO 11784/11785 + 125 kHz legacy) — ~$30–$300 depending on model
+- Many scanners already have Bluetooth → connect to smartphone running PetProData app
+- Example scanners: HomeAgain WorldScan, Datamars Pocket Reader, Halo Microchip Scanner
+
+**For civilians / volunteers**:
+- Any NFC-enabled smartphone (iPhone 7+, most Android phones 2018+)
+- PetProData app reads NFC smart collar tags
+- Camera reads QR code backup tags
+- No special hardware needed
+
+### Privacy Considerations
+
+- **The RFID chip number itself is NOT stored on-chain** — only the hash
+- An RFID scan produces a chip number → hash → DID lookup, but the chip number cannot be reverse-engineered from the DID
+- This means even if the ledger is public, scanning a chip is the only way to link an animal to its DID
+- Owner identity is always sealed — only the pet's emergency health data is disclosed, never the owner's personal information
+- Complies with the same ZK disclosure model as the rest of the DIDz ecosystem
+
+### Existing Microchip Registry Integration
+
+Current registries (AAHA Universal Pet Microchip Lookup, PetLink, HomeAgain, AKC Reunite) are centralized databases with known problems:
+- Owner info often outdated (never updated after moves)
+- No medical data attached
+- No privacy controls — full owner PII exposed to anyone who scans
+- No audit trail of who accessed the data
+
+**PetProData replaces and extends this**:
+- RFID → DID binding means the chip links to a living, updatable identity
+- Medical data attached and selectively disclosable
+- Owner contact via ZK-verified relay (no direct PII exposure)
+- Full on-chain audit trail
+- Emergency disclosure policies controlled by the owner
+- Works even if the owner never updated their address — because the DID follows the owner, not a centralized database
+
+---
+
 ## Proposed Smart Contract Architecture
 
 ### Emergency Pet Disclosure Contract
