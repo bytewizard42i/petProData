@@ -1,0 +1,499 @@
+// ============================================================================
+// PetProData — petProData.compact
+// ============================================================================
+//
+// Privacy-preserving companion-animal identity, ownership, and record-access
+// control on Midnight. Part of the DIDz ecosystem.
+//
+// WHAT THIS CONTRACT DOES
+//   This is the on-chain anchor for a pet's digital identity. It manages:
+//     - Registration of a pet with species class + identity commitment
+//     - Ownership (transferable across people as pets change homes)
+//     - Folder-based permissioned access (13 record folders, owner grants
+//       time-bounded access to vets / boarding / insurance / researchers)
+//     - Emergency packet release with cryptographic audit trail
+//     - Research-cohort consent (opt-in/out for veterinary studies)
+//
+// WHAT THIS CONTRACT DELIBERATELY DOES *NOT* DO
+//   - Store actual medical data. All records (vaccines, labs, imaging, etc.)
+//     live ENCRYPTED OFF-CHAIN. Only commitments appear here, attested via
+//     DIDz.io's `attestToDid` mechanism.
+//   - Handle payments for research. Micropayments flow through off-chain
+//     settlement using the opt-in state recorded here as proof of consent.
+//   - Model the 13 record folders as independent storage. The folders are
+//     just enum tags — each folder is a DIDz attestation type, and the
+//     contract gates WHO can read them.
+//
+// PRIVACY MODEL
+//   PUBLIC  : ownerKey, speciesClass (dog/cat/avian/etc.), registration
+//             timestamps, folder-access grants (who / which folder / until)
+//   PRIVATE : identityCommit + microchipCommit (hashed off-chain data),
+//             emergencyPacketCommit (hashed payload), researchCohortCommit,
+//             the actual medical data (never on-chain)
+//   ZK     : consumers can prove "this DID has granted me access to
+//             folder X" or "this pet is research-eligible for cohort Y"
+//             without revealing the underlying identity metadata
+//
+// INTEGRATION WITH DIDzMonolith
+//   - Owner DIDs are Midnight wallet keys, optionally bound to a
+//     `did:midnight:...` via DIDz.io attestations.
+//   - Each `animalId` is computed with the same persistent-hash pattern as
+//     DIDz.io, so the off-chain SDK can register the animal on BOTH
+//     DIDz.io (EntityType = ANIMAL) and petProData with matching IDs.
+//   - Medical attestations (vaccines, lab results, etc.) flow through
+//     DIDz.io's `attestToDid` — vet writes an attestation with the
+//     attestation type encoding the folder (e.g. pad(32, "VACCINE_RABIES")).
+//   - Emergency responders trigger `logEmergencyAccess` for audit; the
+//     actual packet reveal happens off-chain after reading the commitment.
+//
+// COMPILER
+//   - compactc v0.30.0, language pragma >= 0.16 && <= 0.21
+//   - Validated on the hosted Compact playground (skipZk mode)
+// ============================================================================
+
+pragma language_version >= 0.16 && <= 0.21;
+
+import CompactStandardLibrary;
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+// The 13 canonical record folders per docs/RULES.md-adjacent schemas.
+// New folder types can be added only via contract migration (intentional —
+// keeps the taxonomy stable across all consumers).
+export enum RecordFolder {
+  IDENTITY,        // 0  — species, breed, DOB, markings, microchip
+  VACCINES,        // 1  — vaccination records + compliance
+  ALLERGIES,       // 2  — known allergies and sensitivities
+  MEDICATIONS,     // 3  — current and past prescriptions
+  SURGERIES,       // 4  — surgical history
+  LAB_RESULTS,     // 5  — blood panels, diagnostics
+  IMAGING,         // 6  — X-rays, ultrasound
+  CHRONIC,         // 7  — ongoing conditions (diabetes, CKD, HCM)
+  INSURANCE,       // 8  — policy + claims data
+  NUTRITION,       // 9  — diet, supplements, feeding plans
+  BEHAVIORAL,      // 10 — behavioral assessments, training notes
+  RESEARCH,        // 11 — study participation and opt-ins
+  END_OF_LIFE      // 12 — euthanasia directives, custody transfer
+}
+
+// High-level species class. Fine-grained breed lives in `identityCommit`.
+export enum SpeciesClass {
+  DOG,
+  CAT,
+  AVIAN,
+  REPTILE,
+  SMALL_MAMMAL,
+  FISH,
+  EXOTIC,
+  OTHER
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// One record per registered pet. Keyed by animalId (deterministic hash of
+// owner + species + identity commit + registration time).
+struct AnimalRecord {
+  ownerKey: ZswapCoinPublicKey;
+  speciesClass: Uint<8>;                 // SpeciesClass cast as Uint<8>
+  identityCommit: Bytes<32>;             // hash of {breed, name, DOB, sex, ...}
+  microchipCommit: Bytes<32>;            // hash of microchip number (stable ID)
+  emergencyPacketCommit: Bytes<32>;      // commit to emergency-packet payload
+  emergencyPacketSet: Boolean;           // has the owner configured one?
+  researchConsent: Boolean;              // has owner opted into a cohort?
+  researchCohortCommit: Bytes<32>;       // which cohort (opaque to contract)
+  registeredAt: Uint<64>;
+  isActive: Boolean;                     // false once deactivated
+}
+
+// One record per (animalId, folder, granteeKey) grant. Same grantee can
+// re-grant access to overwrite an expired/revoked prior grant.
+struct FolderAccess {
+  grantedAt: Uint<64>;
+  expiresAt: Uint<64>;
+  isRevoked: Boolean;
+}
+
+// Audit-trail entry: every time an emergency responder accesses the packet,
+// a log entry is written so the owner can see who opened what when.
+struct EmergencyReleaseLog {
+  responderKey: ZswapCoinPublicKey;
+  releasedAt: Uint<64>;
+}
+
+// Hash-input shapes for deterministic key derivation.
+struct AnimalIdInput {
+  separator: Bytes<32>;
+  ownerKey: ZswapCoinPublicKey;
+  speciesClass: Uint<8>;
+  identityCommit: Bytes<32>;
+  registeredAt: Uint<64>;
+}
+
+struct FolderAccessKeyInput {
+  separator: Bytes<32>;
+  animalId: Bytes<32>;
+  folder: Uint<8>;
+  granteeKeyHash: Bytes<32>;
+}
+
+struct GranteeKeyHashInput {
+  separator: Bytes<32>;
+  granteeKey: ZswapCoinPublicKey;
+}
+
+struct EmergencyLogKeyInput {
+  separator: Bytes<32>;
+  animalId: Bytes<32>;
+  releasedAt: Uint<64>;
+}
+
+// ============================================================================
+// LEDGER STATE
+// ============================================================================
+
+export ledger animals: Map<Bytes<32>, AnimalRecord>;
+export ledger folderAccessGrants: Map<Bytes<32>, FolderAccess>;
+export ledger emergencyReleases: Map<Bytes<32>, EmergencyReleaseLog>;
+export ledger totalAnimalsRegistered: Counter;
+export ledger totalAccessGrants: Counter;
+export ledger totalEmergencyReleases: Counter;
+
+sealed ledger deployerKey: ZswapCoinPublicKey;
+
+// ============================================================================
+// CONSTRUCTOR
+// ============================================================================
+
+constructor() { deployerKey = ownPublicKey(); }
+
+// ============================================================================
+// INTERNAL HELPERS
+// ============================================================================
+
+circuit computeAnimalId(
+  ownerKey: ZswapCoinPublicKey,
+  speciesClass: Uint<8>,
+  identityCommit: Bytes<32>,
+  registeredAt: Uint<64>
+): Bytes<32> {
+  return persistentHash<AnimalIdInput>(AnimalIdInput {
+    separator: pad(32, "pet:animal:v1"),
+    ownerKey: ownerKey,
+    speciesClass: speciesClass,
+    identityCommit: identityCommit,
+    registeredAt: registeredAt
+  });
+}
+
+circuit hashGranteeKey(granteeKey: ZswapCoinPublicKey): Bytes<32> {
+  return persistentHash<GranteeKeyHashInput>(GranteeKeyHashInput {
+    separator: pad(32, "pet:grantee:v1"),
+    granteeKey: granteeKey
+  });
+}
+
+circuit computeFolderAccessKey(
+  animalId: Bytes<32>,
+  folder: Uint<8>,
+  granteeKey: ZswapCoinPublicKey
+): Bytes<32> {
+  return persistentHash<FolderAccessKeyInput>(FolderAccessKeyInput {
+    separator: pad(32, "pet:access:v1"),
+    animalId: animalId,
+    folder: folder,
+    granteeKeyHash: hashGranteeKey(granteeKey)
+  });
+}
+
+circuit computeEmergencyLogKey(
+  animalId: Bytes<32>,
+  releasedAt: Uint<64>
+): Bytes<32> {
+  return persistentHash<EmergencyLogKeyInput>(EmergencyLogKeyInput {
+    separator: pad(32, "pet:emergency:v1"),
+    animalId: animalId,
+    releasedAt: releasedAt
+  });
+}
+
+// ============================================================================
+// ANIMAL LIFECYCLE
+// ============================================================================
+
+// Owner registers a new pet. Returns the deterministic animalId so the
+// caller can mirror the registration on DIDz.io (EntityType.ANIMAL) with
+// the same ID.
+export circuit registerAnimal(
+  speciesClass: Uint<8>,
+  identityCommit: Bytes<32>,
+  microchipCommit: Bytes<32>,
+  currentTime: Uint<64>
+): Bytes<32> {
+  assert(disclose(speciesClass) <= (7 as Uint<8>), "Species class out of range");
+
+  const owner = ownPublicKey();
+  const animalId = computeAnimalId(owner, speciesClass, identityCommit, currentTime);
+  assert(!animals.member(disclose(animalId)), "Animal already registered");
+
+  const rec = AnimalRecord {
+    ownerKey: owner,
+    speciesClass: speciesClass,
+    identityCommit: identityCommit,
+    microchipCommit: microchipCommit,
+    emergencyPacketCommit: pad(32, ""),
+    emergencyPacketSet: false,
+    researchConsent: false,
+    researchCohortCommit: pad(32, ""),
+    registeredAt: currentTime,
+    isActive: true
+  };
+  animals.insert(disclose(animalId), disclose(rec));
+  totalAnimalsRegistered.increment(1);
+  return disclose(animalId);
+}
+
+// Transfer ownership to a new wallet (adoption, rescue, etc.). All existing
+// folder-access grants REMAIN in effect — the new owner can revoke them if
+// desired. Emergency packet stays configured (but new owner should rotate).
+export circuit transferOwnership(
+  animalId: Bytes<32>,
+  newOwnerKey: ZswapCoinPublicKey
+): [] {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.isActive, "Animal is deactivated");
+  assert(ownPublicKey() == r.ownerKey, "Only owner can transfer");
+
+  const updated = AnimalRecord {
+    ownerKey: newOwnerKey,
+    speciesClass: r.speciesClass,
+    identityCommit: r.identityCommit,
+    microchipCommit: r.microchipCommit,
+    emergencyPacketCommit: r.emergencyPacketCommit,
+    emergencyPacketSet: r.emergencyPacketSet,
+    researchConsent: r.researchConsent,
+    researchCohortCommit: r.researchCohortCommit,
+    registeredAt: r.registeredAt,
+    isActive: r.isActive
+  };
+  animals.insert(disclose(animalId), disclose(updated));
+}
+
+// End-of-life or permanent removal from the system. Owner-only. Historical
+// grants and emergency logs persist for audit; new access cannot be granted.
+export circuit deactivateAnimal(animalId: Bytes<32>): [] {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.isActive, "Already deactivated");
+  assert(ownPublicKey() == r.ownerKey, "Only owner can deactivate");
+
+  const updated = AnimalRecord {
+    ownerKey: r.ownerKey,
+    speciesClass: r.speciesClass,
+    identityCommit: r.identityCommit,
+    microchipCommit: r.microchipCommit,
+    emergencyPacketCommit: r.emergencyPacketCommit,
+    emergencyPacketSet: r.emergencyPacketSet,
+    researchConsent: r.researchConsent,
+    researchCohortCommit: r.researchCohortCommit,
+    registeredAt: r.registeredAt,
+    isActive: false
+  };
+  animals.insert(disclose(animalId), disclose(updated));
+}
+
+// ============================================================================
+// FOLDER ACCESS (permissioned disclosure)
+// ============================================================================
+
+// Owner grants a specific grantee (vet, boarding, insurer) time-bounded
+// access to one folder. Re-granting overwrites a prior grant (useful when
+// the grantee's previous grant expired).
+export circuit grantFolderAccess(
+  animalId: Bytes<32>,
+  folder: Uint<8>,
+  granteeKey: ZswapCoinPublicKey,
+  expiresAt: Uint<64>,
+  currentTime: Uint<64>
+): Bytes<32> {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.isActive, "Animal deactivated");
+  assert(ownPublicKey() == r.ownerKey, "Only owner can grant access");
+  assert(disclose(folder) <= (12 as Uint<8>), "Invalid folder");
+  assert(disclose(expiresAt) > disclose(currentTime), "Expiration must be future");
+
+  const slot = computeFolderAccessKey(animalId, folder, granteeKey);
+  const grant = FolderAccess {
+    grantedAt: currentTime,
+    expiresAt: expiresAt,
+    isRevoked: false
+  };
+  folderAccessGrants.insert(disclose(slot), disclose(grant));
+  totalAccessGrants.increment(1);
+  return disclose(slot);
+}
+
+// Owner revokes access immediately. Historical grant remains visible for
+// audit but returns false from `hasFolderAccess`.
+export circuit revokeFolderAccess(
+  animalId: Bytes<32>,
+  folder: Uint<8>,
+  granteeKey: ZswapCoinPublicKey
+): [] {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(ownPublicKey() == r.ownerKey, "Only owner can revoke access");
+
+  const slot = computeFolderAccessKey(animalId, folder, granteeKey);
+  assert(folderAccessGrants.member(disclose(slot)), "No grant to revoke");
+  const g = folderAccessGrants.lookup(disclose(slot));
+  assert(!g.isRevoked, "Already revoked");
+
+  const updated = FolderAccess {
+    grantedAt: g.grantedAt,
+    expiresAt: g.expiresAt,
+    isRevoked: true
+  };
+  folderAccessGrants.insert(disclose(slot), disclose(updated));
+}
+
+// Consumer-facing predicate: is this grantee currently authorized for this
+// folder? Respects deactivation, revocation, and expiration. Off-chain
+// systems call this before decrypting folder data they store.
+export circuit hasFolderAccess(
+  animalId: Bytes<32>,
+  folder: Uint<8>,
+  granteeKey: ZswapCoinPublicKey,
+  currentTime: Uint<64>
+): Boolean {
+  if (!animals.member(disclose(animalId))) { return false; }
+  const r = animals.lookup(disclose(animalId));
+  if (!r.isActive) { return false; }
+
+  const slot = computeFolderAccessKey(animalId, folder, granteeKey);
+  if (!folderAccessGrants.member(disclose(slot))) { return false; }
+  const g = folderAccessGrants.lookup(disclose(slot));
+  if (g.isRevoked) { return false; }
+  return g.expiresAt >= currentTime;
+}
+
+// ============================================================================
+// EMERGENCY PACKET
+// ============================================================================
+
+// Owner pre-configures an emergency packet (allergies, meds, chronic
+// conditions, sedation contraindications, etc.). The actual payload lives
+// off-chain; only the commitment is stored. Emergency responders learn the
+// commitment exists via microchip scan → they fetch + decrypt off-chain.
+export circuit setEmergencyPacket(
+  animalId: Bytes<32>,
+  packetCommit: Bytes<32>
+): [] {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.isActive, "Animal deactivated");
+  assert(ownPublicKey() == r.ownerKey, "Only owner can set emergency packet");
+
+  const updated = AnimalRecord {
+    ownerKey: r.ownerKey,
+    speciesClass: r.speciesClass,
+    identityCommit: r.identityCommit,
+    microchipCommit: r.microchipCommit,
+    emergencyPacketCommit: packetCommit,
+    emergencyPacketSet: true,
+    researchConsent: r.researchConsent,
+    researchCohortCommit: r.researchCohortCommit,
+    registeredAt: r.registeredAt,
+    isActive: r.isActive
+  };
+  animals.insert(disclose(animalId), disclose(updated));
+}
+
+// Emergency responder logs that they accessed the packet. No permission
+// check — emergency access is designed to be broadly available. The log
+// creates the audit trail owners can review later. Abuse is discouraged
+// by public visibility of every access event.
+export circuit logEmergencyAccess(
+  animalId: Bytes<32>,
+  currentTime: Uint<64>
+): Bytes<32> {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.emergencyPacketSet, "No emergency packet configured");
+
+  const responder = ownPublicKey();
+  const logKey = computeEmergencyLogKey(animalId, currentTime);
+  const log = EmergencyReleaseLog {
+    responderKey: responder,
+    releasedAt: currentTime
+  };
+  emergencyReleases.insert(disclose(logKey), disclose(log));
+  totalEmergencyReleases.increment(1);
+  return disclose(logKey);
+}
+
+// ============================================================================
+// RESEARCH CONSENT (opt-in cohort matching for veterinary studies)
+// ============================================================================
+
+// Owner opts their pet into a research cohort (or opts back out). The
+// cohort is identified by a commitment hash; researchers use the
+// companion `proveResearchEligible` circuit to filter candidates without
+// learning owner identity.
+export circuit setResearchConsent(
+  animalId: Bytes<32>,
+  cohortCommit: Bytes<32>,
+  optIn: Boolean
+): [] {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  const r = animals.lookup(disclose(animalId));
+  assert(r.isActive, "Animal deactivated");
+  assert(ownPublicKey() == r.ownerKey, "Only owner can set consent");
+
+  const updated = AnimalRecord {
+    ownerKey: r.ownerKey,
+    speciesClass: r.speciesClass,
+    identityCommit: r.identityCommit,
+    microchipCommit: r.microchipCommit,
+    emergencyPacketCommit: r.emergencyPacketCommit,
+    emergencyPacketSet: r.emergencyPacketSet,
+    researchConsent: optIn,
+    researchCohortCommit: cohortCommit,
+    registeredAt: r.registeredAt,
+    isActive: r.isActive
+  };
+  animals.insert(disclose(animalId), disclose(updated));
+}
+
+// Researcher-facing: is this animal opted in to my specific cohort?
+// Returns false if the animal is deactivated, opted out, or opted into
+// a different cohort.
+export circuit proveResearchEligible(
+  animalId: Bytes<32>,
+  expectedCohortCommit: Bytes<32>
+): Boolean {
+  if (!animals.member(disclose(animalId))) { return false; }
+  const r = animals.lookup(disclose(animalId));
+  if (!r.isActive) { return false; }
+  if (!r.researchConsent) { return false; }
+  return r.researchCohortCommit == expectedCohortCommit;
+}
+
+// ============================================================================
+// READ-ONLY QUERIES
+// ============================================================================
+
+export circuit getAnimalRecord(animalId: Bytes<32>): AnimalRecord {
+  assert(animals.member(disclose(animalId)), "Animal not found");
+  return animals.lookup(disclose(animalId));
+}
+
+export circuit isAnimalActive(animalId: Bytes<32>): Boolean {
+  if (!animals.member(disclose(animalId))) { return false; }
+  return animals.lookup(disclose(animalId)).isActive;
+}
