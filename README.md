@@ -89,13 +89,38 @@ PetProData
 
 ---
 
+## Three Verticals, One Architecture
+
+PetProData is the **companion-animal** vertical of a three-vertical family that shares one privacy-preserving health-data architecture:
+
+| Vertical | Repo | Phase | What it does |
+|----------|------|-------|--------------|
+| 🐾 **PetProData** | this repo | Phase 0 | Companion animal records (dogs, cats, exotics) |
+| 🐴 **EquinePro** | [equineProData](https://github.com/bytewizard42i/equineProData) | Phase 1 | Equine identity + RWA (ownership shares, breeding, lineage) |
+| 🏥 **SafeHealthData** | [safeHealthData](https://github.com/bytewizard42i/safeHealthData_me) | Phase 2+ | Human inpatient + outpatient healthcare |
+
+**Same Compact contracts. Same folder model. Same emergency reveal protocol. Same DIDz identity primitives.** PetProData is Phase 0 of the rollout because companion-animal medicine is the right place to prove the architecture: real users, real clinical operations, owners who care intensely, and regulation light enough for fast iteration. Everything PetProData ships becomes the foundation EquinePro and SafeHealthData inherit.
+
+**What flows from PetProData forward**: folder model, permission graph, emergency reveal contracts, vaccine/allergy/medication clearance circuits, owner-portal UX, research marketplace pattern, vet PIMS integration patterns.
+
+**What flows back to PetProData**: HIPAA-grade audit trail (overkill for vet records until it isn't), bedside kiosk + RFID + biometric pattern from the [hospital room deep dive](https://github.com/bytewizard42i/safeHealthData_me/blob/main/docs/EVENTREVOLUTION_HOSPITAL_ROOM_DEEP_DIVE.md) (Phase 0 deploys first in a vet teaching hospital), Ai inference consent layer, discharge soulbound NFT, cross-species research via [STARSTREAM_HIPAA_PROOFS](https://github.com/bytewizard42i/safeHealthData_me/blob/main/docs/STARSTREAM_HIPAA_PROOFS.md).
+
+See **[Three Verticals, One Architecture](https://github.com/bytewizard42i/safeHealthData_me/blob/main/docs/CROSS_VERTICAL_INTEGRATION.md)** (canonical reference in the SafeHealthData repo) for what transfers between verticals, identity mapping across species, and operational cross-pollination.
+
+---
+
 ## Related Projects
 
 | Project | Role |
 |---------|------|
-| [SafeHealth Data](https://github.com/bytewizard42i/safeHealthData_me) | Parent platform — human healthcare |
-| [EquinePro](https://github.com/bytewizard42i/equineProData) | Sister platform — equine (horses) |
+| [SafeHealthData](https://github.com/bytewizard42i/safeHealthData_me) | Parent platform, human healthcare (Phase 2+) |
+| [EquinePro](https://github.com/bytewizard42i/equineProData) | Sister platform, equine (Phase 1) |
 | [DIDz.io](https://github.com/bytewizard42i/didz-dapp-system) | Identity hub for the ecosystem |
+| [KYCz](https://github.com/bytewizard42i/KYCz_us_app) | Owner / vet practice / staff verification |
+| [SentinelDID](https://github.com/bytewizard42i/SentinelDID) | Emergency reveal policy contracts |
+| [SharedScience](https://github.com/bytewizard42i/sharedScience_me) | Research marketplace (cross-species cohort matching) |
+| [EventRevolution](https://github.com/bytewizard42i/EventRevolution) | Bedside kiosk + RFID hardware reference (vet hospital pilot) |
+| [ZKSplunk](https://github.com/bytewizard42i/ZKSplunk_Splunking_w_Midnight) | Vet practice operations dashboards + Ai diagnostics |
 | [DIDzMonolith](https://github.com/bytewizard42i/DIDzMonolith) | Monorepo containing all DIDz projects |
 
 ---
