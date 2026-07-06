@@ -153,3 +153,13 @@ The concept of using animal health datasets as a precursor to semi-decentralized
 ## License
 
 TBD
+
+## Three-pillar connection
+
+petProData is a **consumer product** built on the DIDz three-pillar model:
+
+- **DIDz (root identity):** Pet owners hold a DIDz; petProData verifies ownership without revealing identity.
+- **AgenticDID (agent authority):** Research/vet agents can be delegated scoped grants to access health records.
+- **RWAz (object identity):** Pets are registered as RWAz objects — ownership is a transferable credential on the RWAz registry.
+
+petProData uses `petProData.compact` (12 circuits).
