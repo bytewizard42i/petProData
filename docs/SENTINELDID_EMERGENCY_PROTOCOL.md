@@ -16,7 +16,7 @@ SentinelDID was built for human disaster response, but the same patterns apply d
 |---------------------|---------------------------|
 | **DID-NFT + QR** | Pet identity tags — scannable collar/microchip-linked QR for instant identification |
 | **Workforce hierarchy** | Rescue team chain-of-command (incident commander → team leads → field rescuers → volunteers) |
-| **Downman switch** | Alert if a rescue worker goes unresponsive in a dangerous environment (collapsed building, flood zone) |
+| **LegacyKey switch** | Alert if a rescue worker goes unresponsive in a dangerous environment (collapsed building, flood zone) |
 | **Volunteer onboarding** | Disaster animal rescue volunteers verified via KYCz in minutes with just a smartphone |
 | **AI-assisted delegation** | Triage — which animals need critical vet care vs. shelter vs. are uninjured |
 | **Victim management** | Privacy-preserving tracking of rescued animals across shelters and foster placements |
@@ -74,7 +74,7 @@ SentinelDID was built for human disaster response, but the same patterns apply d
 - Emergency vet (verified credentials via SentinelDID) triggers emergency disclosure
 - Critical medical info released: medications, allergies, prior surgeries, chronic conditions
 - Vet can treat safely without the full history
-- Owner notified via Downman-style alert chain
+- Owner notified via LegacyKey-style alert chain
 
 ### 3. Shelter/Foster Coordination During Crisis
 
@@ -110,9 +110,9 @@ SentinelDID was built for human disaster response, but the same patterns apply d
 
 ---
 
-## Downman Switch for Pet Safety
+## LegacyKey Switch for Pet Safety
 
-SentinelDID's Downman Switch adapts to pet contexts:
+SentinelDID's LegacyKey Switch adapts to pet contexts:
 
 ### Elderly/Disabled Pet Owner Monitoring
 
@@ -126,7 +126,7 @@ SentinelDID's Downman Switch adapts to pet contexts:
 
 ### Pet Transport Safety
 
-- During transport (boarding, relocation, rescue transport), Downman switch monitors the transport vehicle/handler
+- During transport (boarding, relocation, rescue transport), LegacyKey switch monitors the transport vehicle/handler
 - GPS + check-in cadence ensures the animal's safety en route
 - If transport goes silent, alert chain activates with the animal's last known location
 
@@ -258,10 +258,10 @@ Emergency Pet Disclosure
 └── reunificationProof()        — Owner proves ownership to reclaim pet
 ```
 
-### Pet Downman Switch
+### Pet LegacyKey Switch
 
 ```
-Pet Downman Switch
+Pet LegacyKey Switch
 ├── configureSwitch()           — Check-in cadence, contacts, escalation chain
 ├── processCheckIn()            — Owner/handler alive signal
 ├── missedCheckIn()             — Start countdown
